@@ -1,0 +1,33 @@
+[
+  {
+    "id": 1,
+    "priority": 1,
+    "action": {
+      "type": "modifyHeaders",
+      "responseHeaders": [
+        { "header": "cross-origin-embedder-policy", "operation": "remove" },
+        { "header": "cross-origin-opener-policy", "operation": "remove" },
+        { "header": "cross-origin-resource-policy", "operation": "remove" }
+      ]
+    },
+    "condition": {
+      "urlFilter": "*://*.fbcdn.net/*",
+      "resourceTypes": ["image", "xmlhttprequest", "media"]
+    }
+  },
+  {
+    "id": 2,
+    "priority": 1,
+    "action": {
+      "type": "modifyHeaders",
+      "requestHeaders": [
+        { "header": "Origin", "operation": "set", "value": "https://www.facebook.com" },
+        { "header": "Referer", "operation": "set", "value": "https://www.facebook.com/" }
+      ]
+    },
+    "condition": {
+      "urlFilter": "*://*.fbcdn.net/*",
+      "resourceTypes": ["image", "media"]
+    }
+  }
+]

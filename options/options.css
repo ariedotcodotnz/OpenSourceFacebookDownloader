@@ -1,0 +1,125 @@
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    padding: 20px;
+    background-color: #f0f2f5;
+    color: #1c1e21;
+    display: flex;
+    justify-content: center;
+    min-height: 100vh;
+    box-sizing: border-box;
+    margin: 0;
+}
+
+.container {
+    width: 100%;
+    max-width: 700px;
+    background-color: white;
+    padding: 25px 30px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    box-sizing: border-box;
+}
+
+h1 {
+    text-align: center;
+    color: #1877f2;
+    margin-bottom: 25px;
+    font-size: 1.8em;
+    font-weight: 600;
+}
+h2 {
+    color: #1c1e21;
+    border-bottom: 1px solid #dddfe2;
+    padding-bottom: 8px;
+    margin-top: 25px;
+    margin-bottom: 15px;
+    font-size: 1.3em;
+}
+
+.option-group {
+    margin-bottom: 25px;
+}
+
+.option {
+    margin-bottom: 18px;
+}
+
+.option label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 500;
+    font-size: 0.95em;
+    color: #333;
+}
+
+.option input[type="text"],
+.option input[type="number"],
+.option select {
+    width: 100%;
+    padding: 10px;
+    box-sizing: border-box;
+    border: 1px solid #ccd0d5;
+    border-radius: 6px;
+    font-size: 0.9em;
+}
+
+.option input[type="text"]:focus,
+.option input[type="number"]:focus,
+.option select:focus {
+    border-color: #1877f2;
+    box-shadow: 0 0 0 2px rgba(24, 119, 242, 0.2);
+    outline: none;
+}
+
+
+.option input[type="checkbox"] {
+    margin-right: 8px;
+    vertical-align: middle;
+}
+.option input[type="checkbox"] + label {
+    display: inline;
+    font-weight: normal;
+}
+
+
+.option small {
+    display: block;
+    font-size: 0.8em;
+    color: #606770;
+    margin-top: 5px;
+    line-height: 1.4;
+}
+
+#saveOptionsBtn, #resetOptionsBtn {
+    padding: 10px 20px;
+    font-size: 1em;
+    font-weight: 500;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    margin-right: 10px;
+    transition: background-color 0.2s ease;
+}
+
+#saveOptionsBtn {
+    background-color: #1877f2; /* Primary action */
+}
+#saveOptionsBtn:hover {
+    background-color: #166fe5;
+}
+
+#resetOptionsBtn {
+    background-color: #e4e6eb; /* Secondary action */
+    color: #4b4f56;
+}
+#resetOptionsBtn:hover {
+    background-color: #dadde1;
+}
+
+
+#saveStatus {
+    margin-top: 15px;
+    text-align: center;
+    font-size: 0.9em;
+}

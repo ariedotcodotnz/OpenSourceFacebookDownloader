@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>FB Photo Downloader</title>
+    <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <img src="../icons/icon48.png" alt="Logo" class="logo">
+        <h1>FB Photo Downloader</h1>
+    </div>
+    <div id="status">Detecting page...</div>
+
+    <div id="albumInfo" class="info-section" style="display:none;">
+        <p><strong>Album:</strong> <span id="albumName"></span></p>
+        <p><span id="photoCount">0</span> photos detected.</p>
+    </div>
+    <div id="postInfo" class="info-section" style="display:none;">
+        <p><strong>Post:</strong> <span id="postPhotoCount">0</span> photos detected.</p>
+    </div>
+
+    <button id="downloadBtn" class="action-btn" style="display:none;">Download</button>
+    <button id="cancelBtn" class="action-btn cancel-btn" style="display:none;">Cancel Download</button>
+
+    <div id="progressContainer" style="display:none;">
+        <p><span id="progressStatus">Downloading:</span> <span id="progressText">0/0</span></p>
+        <progress id="progressBar" value="0" max="100"></progress>
+    </div>
+    <div id="errorMessages" class="error-text"></div>
+    <button id="openOptionsBtn">Options</button>
+    <p class="footer-note">Open Source Facebook Downloader v1.1.0</p>
+</div>
+<script src="popup.js"></script>
+</body>
+</html>

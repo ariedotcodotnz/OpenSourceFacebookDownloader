@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Downloader Options</title>
+    <link rel="stylesheet" href="options.css">
+</head>
+<body>
+<div class="container">
+    <h1>Downloader Options</h1>
+<div class="option-group">
+    <h2>Naming Conventions</h2>
+    <div class="option">
+        <label for="folderNameRule">Folder Naming Rule:</label>
+        <input type="text" id="folderNameRule">
+        <small>Placeholders: {album_name}, {owner_name}, {date_YYYY-MM-DD}, {date_MM-DD-YYYY}, {date_DD-MM-YYYY}, {timestamp_unix}, {year}, {month}, {day}</small>
+    </div>
+    <div class="option">
+        <label for="fileNameRule">File Naming Rule:</label>
+        <input type="text" id="fileNameRule">
+        <small>Placeholders: {index} (0-padded by default, e.g. 001), {index_raw} (e.g. 1), {original_name}, {photo_id}, {timestamp_unix}, {date_YYYY-MM-DD}, {time_HH-MM-SS}, {year}, {month}, {day}, {hour}, {minute}, {second}</small>
+        <label for="fileNameIndexPadding">Index Padding (Digits for {index}):</label>
+        <input type="number" id="fileNameIndexPadding" min="0" max="10" value="3">
+    </div>
+</div>
+
+<div class="option-group">
+    <h2>Download Settings</h2>
+    <div class="option">
+        <label for="imageFormat">Image Format (Note: Conversion might not always be possible or may reduce quality):</label>
+        <select id="imageFormat" disabled> <!-- Disabled for now as conversion is complex -->
+            <option value="original">Original (Recommended)</option>
+            <option value="jpg" title="Coming soon - Conversion to JPG">JPG (Coming Soon)</option>
+            <option value="png" title="Coming soon - Conversion to PNG">PNG (Coming Soon)</option>
+        </select>
+    </div>
+    <div class="option">
+        <input type="checkbox" id="skipDownloaded">
+        <label for="skipDownloaded">Skip already downloaded files (based on Photo ID)</label>
+    </div>
+    <div class="option">
+        <label for="concurrentDownloads">Concurrent Downloads:</label>
+        <input type="number" id="concurrentDownloads" min="1" max="10" value="3">
+        <small>Number of photos to download simultaneously (1-10). Higher values may strain Facebook or your connection.</small>
+    </div>
+    <div class="option">
+        <label for="delayBetweenDownloads">Delay Between Downloads (ms):</label>
+        <input type="number" id="delayBetweenDownloads" min="0" max="10000" step="100" value="500">
+        <small>Wait time in milliseconds between each download request (0-10000).</small>
+    </div>
+</div>
+
+<button id="saveOptionsBtn">Save Options</button>
+<button id="resetOptionsBtn">Reset to Defaults</button>
+<div id="saveStatus"></div>
+</div>
+<script src="options.js"></script>
+</body>
+</html>
