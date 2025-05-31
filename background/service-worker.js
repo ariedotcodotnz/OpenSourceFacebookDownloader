@@ -19,6 +19,7 @@ let currentTabId = null;
 let isCancelled = false;
 let totalPhotosForCurrentJob = 0;
 let processedPhotosForCurrentJob = 0;
+let isDownloading = false; // Add missing declaration
 
 // Load downloaded file IDs on startup
 chrome.storage.local.get(['downloadedFileIds'], (result) => {
@@ -277,22 +278,13 @@ async function downloadPhoto(item) {
 
     return new Promise(async (resolve, reject) => {
         try {
-            // Placeholder for actual image format conversion if item.options.imageFormat is not 'original'
-            // For now, we download directly.
-
-            const response = await fetch(item.url);
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status} for ${item.originalName}`);
-            }
-            const blob = await response.blob();
-            const objectURL = URL.createObjectURL(blob);
-
+            // IMPORTANT CHANGE: Use the direct URL instead of creating a blob URL
+            // This avoids the need for URL.createObjectURL which isn't available in service workers
             chrome.downloads.download({
-                url: objectURL,
+                url: item.url,  // Use the direct URL from Facebook's CDN
                 filename: fullPath,
                 saveAs: false
             }, (downloadId) => {
-                URL.revokeObjectURL(objectURL);
                 if (chrome.runtime.lastError) {
                     console.error(`Download failed for ${item.originalName}:`, chrome.runtime.lastError.message);
                     notifyPopup("downloadError", { error: `Failed for ${item.originalName}: ${chrome.runtime.lastError.message.substring(0,100)}` });
@@ -321,7 +313,6 @@ async function downloadPhoto(item) {
         }
     });
 }
-
 
 // Initialize rules
 chrome.runtime.onInstalled.addListener(() => {
@@ -372,7 +363,6 @@ chrome.runtime.onInstalled.addListener(() => {
         }
     });
 });
-
 
 console.log("Open Source Facebook Photo Downloader Service Worker Ready.");
 

@@ -30,9 +30,52 @@ function isLikelyAlbumPage() {
     if (document.querySelector('[data-pagelet*="MediaViewerAlbum"]')) return true; // Newer FB UIs
     if (document.querySelector('[aria-label*="Album"], [aria-label*="album"]')) return true;
 
+    // Check URL patterns for albums
+    const url = window.location.href;
+    if (url.includes('/photos/album/') || url.includes('media/set/?set=a.') || url.includes('/photos_albums/')) {
+        return true;
+    }
+
     return false;
 }
 
+// Helper function to log all potential image elements for debugging
+function logPotentialImages() {
+    console.log("Debugging images on page:");
+
+    const imageSelectors = [
+        'img[data-visualcompletion="media-vc-image"]',
+        'div[data-visualcompletion="photo-layout"] img',
+        'object[type="image/jpeg"]',
+        'img.spotlight',
+        'img[data-imgperflogname="media_viewer_image"]',
+        'a[href*="/photos/"] > img',
+        'img[class*="photo"]',
+        'img[class*="image"]',
+        '[role="main"] img'
+    ];
+
+    imageSelectors.forEach(selector => {
+        const elements = document.querySelectorAll(selector);
+        console.log(`Found ${elements.length} elements matching selector: ${selector}`);
+
+        // Log details of first 5 elements per selector
+        Array.from(elements).slice(0, 5).forEach((el, i) => {
+            const rect = el.getBoundingClientRect();
+            console.log(`${selector} #${i}: src=${el.src?.substring(0, 100)}, width=${rect.width}, height=${rect.height}`);
+        });
+    });
+
+    // Check for image-like elements in the page
+    document.querySelectorAll('img').forEach((img, i) => {
+        if (i < 20) { // Limit to first 20 to avoid console spam
+            const rect = img.getBoundingClientRect();
+            if (rect.width > 100 && rect.height > 100) {
+                console.log(`Large image #${i}: src=${img.src?.substring(0, 100)}, width=${rect.width}, height=${rect.height}`);
+            }
+        }
+    });
+}
 
 function getAlbumInfo() {
     const url = window.location.href;
@@ -40,13 +83,16 @@ function getAlbumInfo() {
     let albumName = "Facebook Album";
     let photoCount = 0;
 
-    // Try to get album ID from URL
-    let albumMatch = url.match(/set=a\.(\d+)/) || url.match(/albums\/(\d+)/);
+    // Try to get album ID from URL - expand pattern matching
+    let albumMatch = url.match(/set=a\.(\d+)/) ||
+        url.match(/albums\/(\d+)/) ||
+        url.match(/album\/(\d+)/) ||
+        url.match(/album_id=(\d+)/);
     if (albumMatch && albumMatch[1]) {
         albumId = albumMatch[1];
     }
 
-    // Try to get album name
+    // Try to get album name - expanded selector patterns
     const albumTitleElement =
         document.querySelector('h1[data-gt=\'{"tn":"%2C"}\'] span') || // Older layout
         document.querySelector('h1 span[dir="auto"]') || // Another older layout
@@ -59,21 +105,22 @@ function getAlbumInfo() {
         document.querySelector('[data-pagelet="TahoeRightRail"] h2 span') || // Right rail album title
         document.querySelector('div[aria-labelledby] h2[dir="auto"]') || // Accessible heading
         document.querySelector('div[data-pagelet="ProfileAppSection_0"] span[dir="auto"] > span[dir="auto"] > h2[dir="auto"] > span[dir="auto"]') || // Another Profile Photos title
+        document.querySelector('[role="heading"][aria-level="1"]') || // Accessible heading element
+        document.querySelector('[role="heading"][aria-level="2"]') || // Secondary heading element
         getMetaProperty("og:title");
-
 
     if (albumTitleElement) {
         albumName = albumTitleElement.textContent.trim();
     } else {
         // Fallback using document title if it seems like an album page
-        if (isLikelyAlbumPage() && document.title.toLowerCase().includes("album")) {
+        if (isLikelyAlbumPage() && document.title) {
             albumName = document.title.replace(" | Facebook", "").trim();
         }
     }
 
-    // Try to get photo count
+    // Try to get photo count - expanded patterns
     const photoCountElements = Array.from(document.querySelectorAll('span, div, a'));
-    const photoCountRegex = /(\d+)\s+(photos?|items)/i;
+    const photoCountRegex = /(\d+)\s+(photos?|items|pictures|images)/i;
     for (const el of photoCountElements) {
         if (el.textContent) {
             const match = el.textContent.match(photoCountRegex);
@@ -83,24 +130,55 @@ function getAlbumInfo() {
             }
         }
     }
-    if (photoCount === 0) { // Fallback for some layouts
-        const images = document.querySelectorAll('img[data-visualcompletion="media-vc-image"], a[href*="/photos/"] > img');
-        if (images.length > 0 && isLikelyAlbumPage()) { // Only count if it seems like an album page
-            photoCount = images.length; // This might be just the loaded ones
+
+    // Fallback for some layouts - more aggressive image finding
+    if (photoCount === 0) {
+        const images = document.querySelectorAll(
+            'img[data-visualcompletion="media-vc-image"], ' +
+            'a[href*="/photos/"] > img, ' +
+            'div[data-visualcompletion="photo-layout"] img, ' +
+            '[role="main"] img[src*="fbcdn"], ' +
+            'img[class*="photo"]'
+        );
+
+        // Filter by size to exclude icons, etc.
+        const largeImages = Array.from(images).filter(img => {
+            const rect = img.getBoundingClientRect();
+            return rect.width > 100 && rect.height > 100;
+        });
+
+        if (largeImages.length > 0 && isLikelyAlbumPage()) {
+            photoCount = largeImages.length;
+            console.log(`Found ${photoCount} potential photos by image size filtering`);
         }
     }
-
 
     // If albumId is still null, try to extract from a link on the page
     if (!albumId) {
-        const albumLinkElement = document.querySelector('a[href*="/media/set/?set=a."]');
-        if (albumLinkElement && albumLinkElement.href) {
-            albumMatch = albumLinkElement.href.match(/set=a\.(\d+)/);
-            if (albumMatch && albumMatch[1]) {
-                albumId = albumMatch[1];
+        // Enhanced link selectors
+        const albumLinkSelectors = [
+            'a[href*="/media/set/?set=a."]',
+            'a[href*="/photos/a."]',
+            'a[href*="/albums/"]',
+            'a[href*="/photos/album/"]'
+        ];
+
+        for (const selector of albumLinkSelectors) {
+            const albumLinkElement = document.querySelector(selector);
+            if (albumLinkElement && albumLinkElement.href) {
+                albumMatch = albumLinkElement.href.match(/set=a\.(\d+)/) ||
+                    albumLinkElement.href.match(/photos\/a\.(\d+)/) ||
+                    albumLinkElement.href.match(/album\/(\d+)/) ||
+                    albumLinkElement.href.match(/albums\/(\d+)/);
+
+                if (albumMatch && albumMatch[1]) {
+                    albumId = albumMatch[1];
+                    break;
+                }
             }
         }
     }
+
     // Another attempt for album ID from profile photos link
     if (!albumId && (albumName.toLowerCase().includes("profile pictures") || albumName.toLowerCase().includes("cover photos"))) {
         const profileLink = document.querySelector('a[href*="/photos_by"]'); // Link to user's main photos page
@@ -128,39 +206,81 @@ function getAlbumInfo() {
         }
     }
 
-
+    // Debug info
     if (albumId) {
+        console.log(`Album detected: ID=${albumId}, Name=${albumName}, PhotoCount=${photoCount}`);
+        // Call our debug function to log potential images
+        logPotentialImages();
         return { isAlbum: true, albumId, albumName, photoCount };
     }
     return null;
 }
 
-
 function getPostOrCollectionInfo() {
     const url = window.location.href;
 
     // Check if it's a permalink/story page or a photo viewer that isn't an album
-    if (url.includes("photo.php") || url.includes("/photos/") || url.includes("permalink.php") || url.includes("/posts/") || url.includes("/watch/") || url.includes("?story_fbid=")) {
+    if (url.includes("photo.php") || url.includes("/photos/") || url.includes("permalink.php") ||
+        url.includes("/posts/") || url.includes("/watch/") || url.includes("?story_fbid=")) {
+
+        console.log("Detected potential post or photo page");
+
+        // Call our debug function to log potential images
+        logPotentialImages();
 
         // Prioritize elements that are definitely part of a collection or main content
-        const mainContentAreas = Array.from(document.querySelectorAll('[role="main"], [data-pagelet*="FeedUnit"], [data-pagelet*="PhotoViewer"], div[aria-label*="attachment"]'));
+        const mainContentAreas = Array.from(document.querySelectorAll(
+            '[role="main"], ' +
+            '[data-pagelet*="FeedUnit"], ' +
+            '[data-pagelet*="PhotoViewer"], ' +
+            'div[aria-label*="attachment"], ' +
+            '[class*="feed"], ' +
+            '[class*="photo"], ' +
+            '[class*="story"]'
+        ));
+
         let photoElements = [];
 
         if (mainContentAreas.length > 0) {
+            console.log(`Found ${mainContentAreas.length} main content areas`);
             mainContentAreas.forEach(area => {
-                photoElements.push(...Array.from(area.querySelectorAll('img[data-visualcompletion="media-vc-image"], div[data-visualcompletion="photo-layout"] img, object[type="image/jpeg"], img.spotlight, img[data-imgperflogname="media_viewer_image"]')));
+                const areaPhotos = Array.from(area.querySelectorAll(
+                    'img[data-visualcompletion="media-vc-image"], ' +
+                    'div[data-visualcompletion="photo-layout"] img, ' +
+                    'object[type="image/jpeg"], ' +
+                    'img.spotlight, ' +
+                    'img[data-imgperflogname="media_viewer_image"], ' +
+                    'img[src*="fbcdn.net"], ' +
+                    'img[class*="image"], ' +
+                    'img[class*="photo"]'
+                ));
+                photoElements.push(...areaPhotos);
+                console.log(`Found ${areaPhotos.length} photos in content area`);
             });
         } else {
             // Fallback to page-wide query if specific main content areas aren't found
-            photoElements = Array.from(document.querySelectorAll('img[data-visualcompletion="media-vc-image"], div[data-visualcompletion="photo-layout"] img, object[type="image/jpeg"], img.spotlight, img[data-imgperflogname="media_viewer_image"]'));
+            photoElements = Array.from(document.querySelectorAll(
+                'img[data-visualcompletion="media-vc-image"], ' +
+                'div[data-visualcompletion="photo-layout"] img, ' +
+                'object[type="image/jpeg"], ' +
+                'img.spotlight, ' +
+                'img[data-imgperflogname="media_viewer_image"], ' +
+                'img[src*="fbcdn.net"], ' +
+                'img[class*="image"], ' +
+                'img[class*="photo"]'
+            ));
+            console.log(`Fallback: Found ${photoElements.length} potential photos across the page`);
         }
 
         // Filter out tiny icons, profile pics in comments, etc. by size (heuristic)
         photoElements = photoElements.filter(img => {
             const rect = img.getBoundingClientRect();
-            return (rect.width > 100 && rect.height > 100) && !img.closest('[role="complementary"]'); // Exclude sidebars
+            const isLargeEnough = (rect.width > 100 && rect.height > 100);
+            const notInComplementary = !img.closest('[role="complementary"]'); // Exclude sidebars
+            return isLargeEnough && notInComplementary;
         });
 
+        console.log(`After filtering: ${photoElements.length} photos remain`);
 
         const photoData = photoElements.map((img, index) => {
             let src = img.src;
@@ -187,6 +307,15 @@ function getPostOrCollectionInfo() {
                 // For now, we'll assume the `img.src` from such structures is what we can get.
             }
 
+            // Try to find a higher-res version using attribute patterns
+            if (img.dataset.src) highResSrc = img.dataset.src;
+            if (img.getAttribute('data-full-src')) highResSrc = img.getAttribute('data-full-src');
+            if (img.getAttribute('data-orig-src')) highResSrc = img.getAttribute('data-orig-src');
+
+            // Process image URL to get highest resolution variant
+            // Replace Facebook's image downsizing parameters
+            src = src.replace(/\/[sp]\d+x\d+\//, '/');
+            src = src.replace(/_\d+x\d+/, '');
 
             src = highResSrc || src; // Prioritize high-res if found
 
@@ -209,12 +338,18 @@ function getPostOrCollectionInfo() {
                 } catch (e) { /* ignore parsing error */ }
             }
 
+            // Try to use the image's ID attribute
+            if (img.id && img.id.includes('photo_')) {
+                photoId = img.id;
+            }
 
             const altText = img.alt || '';
             const originalName = altText.substring(0, 80).replace(/[^a-zA-Z0-9_.\-]/g, '_').replace(/_+/g, '_') || `${photoId}.jpg`;
 
+            console.log(`Found photo: id=${photoId}, src=${src.substring(0, 100)}...`);
             return { id: photoId, url: src, originalName: originalName };
-        }).filter(p => p.url && !p.url.startsWith('data:image')); // Filter out base64 images or empty URLs
+        }).filter(p => p.url && !p.url.startsWith('data:image') && p.url.includes('fbcdn.net'));
+        // Only include Facebook CDN images, exclude base64 or non-FB images
 
         // Deduplicate based on URL or ID if possible (some images might appear multiple times in DOM)
         const uniquePhotos = [];
@@ -227,10 +362,13 @@ function getPostOrCollectionInfo() {
             }
         }
 
+        console.log(`After deduplication: ${uniquePhotos.length} unique photos`);
 
         if (uniquePhotos.length > 0) {
             let postId = null;
-            const storyIdMatch = url.match(/story_fbid=([\w.-]+)/) || url.match(/\/posts\/([\w.-]+)/) || url.match(/fbid=([\w.-]+)/) ;
+            const storyIdMatch = url.match(/story_fbid=([\w.-]+)/) ||
+                url.match(/\/posts\/([\w.-]+)/) ||
+                url.match(/fbid=([\w.-]+)/);
             if (storyIdMatch && storyIdMatch[1]) {
                 postId = storyIdMatch[1];
             } else {
@@ -242,23 +380,27 @@ function getPostOrCollectionInfo() {
                 // and the URL structure matches a photo permalink.
                 // Check if it's NOT part of a set explicitly by looking for "set=a."
                 if (!url.includes("set=a.")) {
+                    console.log("Detected single photo page");
                     return { isSinglePhotoPage: true, photoUrl: uniquePhotos[0].url, photoId: uniquePhotos[0].id };
                 }
             }
 
             // If multiple photos or single photo in a context that isn't strictly a single photo permalink.
+            console.log(`Detected post with ${uniquePhotos.length} photos, postId=${postId}`);
             return { isPostWithPhotos: true, postId, photoIds: uniquePhotos };
         }
     }
     return null;
 }
 
-
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === "getPageContext") {
+        console.log("Received getPageContext request from popup");
+
         // Prioritize album detection
         const albumInfo = getAlbumInfo();
         if (albumInfo && albumInfo.isAlbum && albumInfo.albumId) {
+            console.log("Responding with album info", albumInfo);
             sendResponse(albumInfo);
             return true; // Keep message channel open for async response if needed
         }
@@ -266,12 +408,23 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         // Then check for posts or general photo collections
         const postOrCollectionInfo = getPostOrCollectionInfo();
         if (postOrCollectionInfo) {
+            console.log("Responding with post/collection info", postOrCollectionInfo);
             sendResponse(postOrCollectionInfo);
             return true;
         }
 
         // If none of the above, it's not a recognized downloadable page
+        console.log("No downloadable content detected");
         sendResponse({ isAlbum: false, isPostWithPhotos: false, isSinglePhotoPage: false });
         return true;
     }
 });
+
+// Log on initial load to confirm script is running
+console.log("Facebook Photo Downloader content script initialized, analyzing page...");
+// Optional: Run detection on load to log debug info
+setTimeout(() => {
+    const albumInfo = getAlbumInfo();
+    const postInfo = getPostOrCollectionInfo();
+    console.log("Initial page analysis:", {albumInfo, postInfo});
+}, 1000);
